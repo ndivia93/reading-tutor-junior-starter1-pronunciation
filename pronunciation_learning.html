@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영어 발음 학습</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f0; min-height: 100vh; padding: 20px; }
+.app { max-width: 760px; margin: 0 auto; background: #fff; border-radius: 16px; padding: 24px; box-shadow: 0 2px 16px rgba(0,0,0,0.08); }
+h1 { font-size: 20px; font-weight: 600; color: #1a1a1a; margin-bottom: 4px; }
+.subtitle { font-size: 13px; color: #888; margin-bottom: 20px; }
+.tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+.tab { padding: 8px 16px; border: 1.5px solid #ddd; border-radius: 8px; background: #fff; color: #666; cursor: pointer; font-size: 14px; transition: all 0.15s; font-family: inherit; }
+.tab.active { background: #e8f0fe; color: #1a56db; border-color: #1a56db; font-weight: 600; }
+.tab:hover:not(.active) { background: #f5f5f5; }
+.speed-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.speed-row label { font-size: 13px; color: #666; }
+.speed-row select { font-size: 13px; padding: 5px 10px; border-radius: 8px; border: 1.5px solid #ddd; background: #fafafa; color: #333; font-family: inherit; cursor: pointer; }
+.passage-card { background: #fafafa; border: 1px solid #e8e8e8; border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+.passage-title { font-size: 14px; color: #555; margin-bottom: 14px; font-weight: 600; letter-spacing: -0.2px; }
+.sentence-row { margin-bottom: 10px; display: flex; align-items: flex-start; gap: 8px; }
+.play-sentence-btn { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid #ccc; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; margin-top: 3px; transition: all 0.15s; color: #555; font-size: 11px; font-family: inherit; }
+.play-sentence-btn:hover { background: #e8f0fe; color: #1a56db; border-color: #1a56db; }
+.play-sentence-btn.playing { background: #d4edda; color: #155724; border-color: #28a745; }
+.words-wrap { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.word-btn { display: inline-block; padding: 4px 8px; border-radius: 6px; border: 1.5px solid transparent; background: transparent; cursor: pointer; font-size: 16px; color: #1a1a1a; transition: all 0.12s; line-height: 1.5; font-family: inherit; }
+.word-btn:hover { background: #e8f0fe; color: #1a56db; }
+.word-btn.playing { background: #fff3cd; color: #856404; border-color: #ffc107; }
+.punct { font-size: 16px; color: #999; line-height: 1.5; padding: 4px 1px; }
+.play-all-btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 22px; border-radius: 8px; border: 1.5px solid #ccc; background: #f5f5f5; cursor: pointer; font-size: 14px; color: #333; transition: all 0.15s; font-family: inherit; font-weight: 500; }
+.play-all-btn:hover { background: #e8f0fe; color: #1a56db; border-color: #1a56db; }
+.play-all-btn.playing { background: #d4edda; color: #155724; border-color: #28a745; }
+.tooltip { position: fixed; background: #fff; border: 1px solid #ddd; border-radius: 12px; padding: 12px 16px; max-width: 220px; z-index: 999; box-shadow: 0 4px 20px rgba(0,0,0,0.12); pointer-events: none; transition: opacity 0.15s; }
+.tooltip.hidden { opacity: 0; }
+.tip-word { font-size: 17px; font-weight: 600; color: #1a1a1a; margin-bottom: 3px; }
+.tip-phonetic { font-size: 12px; color: #888; margin-bottom: 6px; font-family: monospace; }
+.tip-meaning { font-size: 14px; color: #333; line-height: 1.4; font-weight: 500; }
+.tip-arrow { display: inline-block; font-size: 11px; color: #aaa; margin-right: 4px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>🔊 영어 발음 학습</h1>
+  <p class="subtitle">단어를 클릭하면 발음과 뜻이 나와요 · 문장 버튼(▶)으로 문장 전체 발음</p>
+  <div class="tabs" id="tabs"></div>
+  <div class="speed-row">
+    <label>🐢 속도:</label>
+    <select id="speedSelect">
+      <option value="0.6">느리게</option>
+      <option value="0.85">조금 느리게</option>
+      <option value="1" selected>보통</option>
+      <option value="1.2">빠르게</option>
+    </select>
+  </div>
+  <div id="content"></div>
+</div>
+<div class="tooltip hidden" id="tooltip">
+  <div class="tip-word" id="tip-word"></div>
+  <div class="tip-phonetic" id="tip-phonetic"></div>
+  <div class="tip-meaning"><span class="tip-arrow">🇰🇷</span><span id="tip-meaning"></span></div>
+</div>
+
+<script>
+const dict = {
+  "i":["aɪ","나"],"am":["æm","~이다"],"not":["nɒt","~않다"],"a":["ə","하나의(부정관사)"],"human":["ˈhjuːmən","인간"],"an":["æn","하나의"],"animal":["ˈænɪməl","동물"],"plant":["plænt","식물"],"don't":["doʊnt","~않다"],"have":["hæv","가지다"],"colors":["ˈkʌlərz","색깔들"],"shape":["ʃeɪp","모양"],"you":["juː","당신"],"can":["kæn","할 수 있다"],"see":["siː","보다"],"me":["miː","나를"],"in":["ɪn","~안에"],"the":["ðə","그(정관사)"],"sea":["siː","바다"],"rivers":["ˈrɪvərz","강들"],"lakes":["leɪks","호수들"],"hardly":["ˈhɑːrdli","거의 ~않다"],"desert":["ˈdezərt","사막"],"strong":["strɔːŋ","강한"],"cut":["kʌt","자르다"],"weak":["wiːk","약한"],"wind":["wɪnd","바람"],"move":["muːv","움직이다"],"need":["niːd","필요하다"],"what":["wɒt","무엇"],"we":["wiː","우리는"],"five":["faɪv","다섯"],"senses":["ˈsensɪz","감각들"],"they":["ðeɪ","그것들은"],"are":["ɑːr","~이다(복수)"],"sight":["saɪt","시각"],"hearing":["ˈhɪərɪŋ","청각"],"taste":["teɪst","미각"],"touch":["tʌtʃ","촉각"],"smell":["smel","후각"],"our":["aʊər","우리의"],"eyes":["aɪz","눈들"],"help":["help","돕다"],"us":["ʌs","우리를"],"things":["θɪŋz","것들"],"with":["wɪð","~와 함께"],"ears":["ɪərz","귀들"],"hear":["hɪər","듣다"],"music":["ˈmjuːzɪk","음악"],"tongue":["tʌŋ","혀"],"food":["fuːd","음식"],"sweet":["swiːt","달콤한"],"chocolate":["ˈtʃɒklət","초콜릿"],"skin":["skɪn","피부"],"feel":["fiːl","느끼다"],"puppies":["ˈpʌpɪz","강아지들"],"fur":["fɜːr","털"],"nose":["noʊz","코"],"flowers":["ˈflaʊərz","꽃들"],"learn":["lɜːrn","배우다"],"new":["njuː","새로운"],"do":["duː","하다"],"know":["noʊ","알다"],"about":["əˈbaʊt","~에 대해"],"llamas":["ˈlɑːməz","라마들"],"look":["lʊk","보이다"],"like":["laɪk","~처럼"],"camels":["ˈkæməlz","낙타들"],"but":["bʌt","하지만"],"humps":["hʌmps","혹들"],"head":["hed","머리"],"long":["lɔːŋ","긴"],"neck":["nek","목"],"also":["ˈɔːlsoʊ","또한"],"four":["fɔːr","넷/4"],"legs":["legz","다리들"],"each":["iːtʃ","각각의"],"foot":["fʊt","발"],"two":["tuː","둘/2"],"toenails":["ˈtoʊneɪlz","발톱들"],"llamas":["ˈlɑːməz","라마들"],"live":["lɪv","살다"],"south":["saʊθ","남쪽"],"america":["əˈmerɪkə","아메리카"],"walk":["wɔːk","걷다"],"up":["ʌp","최대/위"],"to":["tuː","~까지"],"26":["twenti sɪks","26"],"kilometers":["kɪˈlɒmɪtərz","킬로미터"],"day":["deɪ","하루"],"go":["goʊ","가다"],"time":["taɪm","시간"],"without":["wɪˈðaʊt","없이"],"water":["ˈwɔːtər","물"],"carry":["ˈkæri","나르다"],"heavy":["ˈhevi","무거운"],"for":["fɔːr","~를 위해"],"people":["ˈpiːpl","사람들"],"so":["soʊ","그래서"],"very":["ˈveri","매우"],"helpful":["ˈhelpfəl","도움이 되는"],"is":["ɪz","~이다"],"small":["smɔːl","작은"],"they":["ðeɪ","그것들은"],"his":["hɪz","그의"],"her":["hɜːr","그녀의"]
+};
+
+const passages = [
+  {
+    title: "🌊 수수께끼 — What am I?",
+    sentences: [
+      "I am not a human.",
+      "I am not an animal.",
+      "I am not a plant.",
+      "I don't have colors.",
+      "I don't have a shape.",
+      "You can see me in the sea.",
+      "You can see me in rivers.",
+      "You can see me in lakes.",
+      "You can hardly see me in the desert.",
+      "I am strong.",
+      "You can't cut me.",
+      "I am weak.",
+      "The wind can move me.",
+      "You need me.",
+      "I don't need you.",
+      "What am I?"
+    ]
+  },
+  {
+    title: "👁️ 오감 — Our Five Senses",
+    sentences: [
+      "We have five senses.",
+      "They are sight, hearing, taste, touch, and smell.",
+      "Our eyes help us see things.",
+      "We see colors with our eyes.",
+      "Our ears help us hear things.",
+      "We hear music with our ears.",
+      "Our tongue helps us taste food.",
+      "We taste sweet chocolate with our tongue.",
+      "Our skin helps us feel things.",
+      "We feel puppies' fur with our skin.",
+      "Our nose helps us smell things.",
+      "We smell flowers with our nose.",
+      "We learn new things with our senses."
+    ]
+  },
+  {
+    title: "🦙 라마 — About Llamas",
+    sentences: [
+      "Do you know about llamas?",
+      "They look like camels.",
+      "But llamas don't have humps.",
+      "They have a small head.",
+      "They have a long neck.",
+      "They have long ears.",
+      "They also have four long legs.",
+      "Each foot has two toenails.",
+      "Llamas live in South America.",
+      "They walk up to 26 kilometers a day.",
+      "They go a long time without water.",
+      "They carry heavy things for people.",
+      "So they are very helpful to people!"
+    ]
+  }
+];
+
+let currentPassage = 0;
+const synth = window.speechSynthesis;
+
+const pronounceAs = {
+  "a": "uh",
+  "the": "thuh",
+  "an": "uhn",
+  "and": "uhnd",
+  "i": "eye"
+};
+
+function speak(text, onEnd) {
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  utter.lang = 'en-US';
+  utter.rate = parseFloat(document.getElementById('speedSelect').value);
+  if (onEnd) utter.onend = onEnd;
+  synth.speak(utter);
+}
+
+function speakWord(word, onEnd) {
+  const key = word.toLowerCase();
+  const alt = pronounceAs[key];
+  speak(alt || word, onEnd);
+}
+
+function showTooltip(word, el) {
+  const key = word.toLowerCase().replace(/[^a-z]/g,'');
+  const entry = dict[key];
+  const tip = document.getElementById('tooltip');
+  document.getElementById('tip-word').textContent = word;
+  document.getElementById('tip-phonetic').textContent = entry ? `/${entry[0]}/` : '';
+  document.getElementById('tip-meaning').textContent = entry ? entry[1] : '(뜻 없음)';
+  const rect = el.getBoundingClientRect();
+  let top = rect.bottom + 8;
+  let left = rect.left;
+  if (left + 240 > window.innerWidth) left = window.innerWidth - 250;
+  if (top + 110 > window.innerHeight) top = rect.top - 115;
+  tip.style.top = top + 'px';
+  tip.style.left = left + 'px';
+  tip.classList.remove('hidden');
+}
+
+function hideTooltip() { document.getElementById('tooltip').classList.add('hidden'); }
+
+function tokenize(sentence) {
+  const tokens = [];
+  const regex = /([a-zA-Z']+)|([^a-zA-Z']+)/g;
+  let m;
+  while ((m = regex.exec(sentence)) !== null) {
+    if (m[1]) tokens.push({type:'word', val:m[1]});
+    else tokens.push({type:'punct', val:m[2]});
+  }
+  return tokens;
+}
+
+let playingWordEl = null, playingSentEl = null;
+
+function buildRow(sentence) {
+  const row = document.createElement('div');
+  row.className = 'sentence-row';
+  const btn = document.createElement('button');
+  btn.className = 'play-sentence-btn';
+  btn.textContent = '▶';
+  btn.title = '이 문장 듣기';
+  btn.onclick = () => {
+    if (playingSentEl) playingSentEl.classList.remove('playing');
+    playingSentEl = btn;
+    btn.classList.add('playing');
+    speak(sentence, () => { btn.classList.remove('playing'); if(playingSentEl===btn) playingSentEl=null; });
+  };
+  row.appendChild(btn);
+  const wrap = document.createElement('div');
+  wrap.className = 'words-wrap';
+  tokenize(sentence).forEach(tok => {
+    if (tok.type === 'word') {
+      const w = document.createElement('button');
+      w.className = 'word-btn';
+      w.textContent = tok.val;
+      w.onclick = (e) => {
+        e.stopPropagation();
+        if (playingWordEl) playingWordEl.classList.remove('playing');
+        playingWordEl = w;
+        w.classList.add('playing');
+        showTooltip(tok.val, w);
+        speakWord(tok.val, () => { w.classList.remove('playing'); if(playingWordEl===w) playingWordEl=null; });
+      };
+      wrap.appendChild(w);
+    } else {
+      const sp = document.createElement('span');
+      sp.className = 'punct';
+      sp.textContent = tok.val;
+      wrap.appendChild(sp);
+    }
+  });
+  row.appendChild(wrap);
+  return row;
+}
+
+function render(idx) {
+  const p = passages[idx];
+  const c = document.getElementById('content');
+  c.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'passage-card';
+  const t = document.createElement('div');
+  t.className = 'passage-title';
+  t.textContent = p.title;
+  card.appendChild(t);
+  p.sentences.forEach(s => card.appendChild(buildRow(s)));
+  c.appendChild(card);
+  const allBtn = document.createElement('button');
+  allBtn.className = 'play-all-btn';
+  allBtn.innerHTML = '▶ 전체 듣기';
+  let playing = false;
+  allBtn.onclick = () => {
+    if (playing) { synth.cancel(); playing=false; allBtn.classList.remove('playing'); allBtn.innerHTML='▶ 전체 듣기'; return; }
+    playing=true; allBtn.classList.add('playing'); allBtn.innerHTML='■ 정지';
+    speak(p.sentences.join(' '), () => { playing=false; allBtn.classList.remove('playing'); allBtn.innerHTML='▶ 전체 듣기'; });
+  };
+  c.appendChild(allBtn);
+}
+
+function renderTabs() {
+  const el = document.getElementById('tabs');
+  el.innerHTML = '';
+  ['① 수수께끼','② 오감','③ 라마'].forEach((label, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'tab' + (i===currentPassage?' active':'');
+    tab.textContent = label;
+    tab.onclick = () => { synth.cancel(); currentPassage=i; renderTabs(); render(i); };
+    el.appendChild(tab);
+  });
+}
+
+document.addEventListener('click', e => { if(!e.target.classList.contains('word-btn')) hideTooltip(); });
+renderTabs();
+render(0);
+</script>
+</body>
+</html>
